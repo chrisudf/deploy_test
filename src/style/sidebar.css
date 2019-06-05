@@ -1,0 +1,17 @@
+.side-nav {
+  position: sticky;
+  height: 100%;
+  background-color: #f8f8f8;
+  border: 3px solid #ffd400;
+  color: #1b2c65;
+}
+.sidenav-header {
+  font-weight: bold;
+  font-size: 1.1em;
+  padding: 20px 20px 5px 30px;
+}
+
+.sidenav-body {
+  font-size: 1em;
+  padding: 5px 20px 5px 50px;
+}

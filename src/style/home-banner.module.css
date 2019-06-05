@@ -1,0 +1,46 @@
+.bgImage {
+  background-attachment: fixed;
+  background-position-x: 75%;
+  background-size: cover;
+  padding: 0;
+  min-height: 650px;
+  background-image: url(/image/page.jpg);
+}
+
+.content {
+  top: 150px;
+  padding: 0px 30px;
+  color: #fff;
+  font-family: sans-serif;
+}
+.contentTitle {
+  font-size: 16px;
+  font-weight: normal;
+  line-height: 28px;
+  margin-bottom: 10px;
+}
+
+.contentBtn {
+  background-color: rgba(121, 6, 73, 0.6);
+  margin: 3px 10px;
+  padding: 15px;
+}
+
+.link {
+  border: none;
+  outline: none;
+  text-align: center;
+  font-size: 1.5em;
+  color: #ffffff;
+  text-transform: uppercase;
+}
+
+.link:hover {
+  color: #ffd400;
+  text-decoration-line: none;
+}
+
+.link:active {
+  color: #1b2c65;
+  font-weight: bolder;
+}

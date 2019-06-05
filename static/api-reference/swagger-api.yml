@@ -1,0 +1,2353 @@
+swagger: "2.0"
+info:
+  title: Cohort Go Platform API
+  description: |
+    This document describes the REST API exposed by Cohort Go Platform for access to all Cohort Go services.
+
+    ## Overview
+    This document is arranged into a number of functional sections. Core functions provide access to basic student
+    management facilities, which then provide access to various other Cohort Go services such as payments and insurance.
+
+    ## Authorisation
+    Requests are authorised through the use of username/password credentials that will be provided when your API
+    account with the Cohort Go Platform is enabled. These should be provided as part of an `Authorisation:` HTTP header.
+  version: 1.0.0
+host: api.cohortflow.com
+schemes:
+  - https
+basePath: "/api/v1"
+produces:
+  - application/json
+securityDefinitions:
+  basic:
+    type: basic
+    description:
+      Username and password are the same as the ones used to log in to
+      your Cohort Go Portal account.
+security:
+  - basic: []
+paths:
+  "/students":
+    post:
+      summary: Create Student
+      description: "Create a new student record within the Cohort Go Platform."
+      tags:
+        - Core
+      consumes:
+        - application/json
+      parameters:
+        - name: student
+          in: body
+          description: Details of student being created
+          required: true
+          schema:
+            properties:
+              student:
+                "$ref": "#/definitions/Student"
+      responses:
+        200:
+          description: Student accepted
+          schema:
+            "$ref": "#/definitions/Student"
+        400:
+          description: Student data invalid
+          schema:
+            "$ref": "#/definitions/Error"
+          examples:
+            application/json: |
+              {
+                "errors": {
+                  "given_name": "cannot be blank"
+                }
+              }
+  "/students/{id}":
+    get:
+      summary: Retrieve Student Details
+      description: "Retrieves the stored details of a student record."
+      tags:
+        - Core
+      parameters:
+        - in: path
+          name: id
+          type: string
+          required: true
+          description: The ID of the student.
+      responses:
+        200:
+          description: Student details found.
+          schema:
+            "$ref": "#/definitions/Student"
+        404:
+          description: Student not found
+  "/files/request_upload_endpoint":
+    get:
+      summary: Retrieve File Upload Endpoint
+      description: |
+        Provides a URL that can be used for storing a file for use with other methods, such as invoice or identity document uploads.
+        A `PUT` request should be made to the returned URL to store the file. Once the `PUT` request has completed, the URL can then
+        be provided to other API methods that require a file URL. Note that files uploaded to this endpoint will only be retained for
+        a short time (24 hours or less), so this endpoint should not be used for any use other than preparing files for upload into
+        the Cohort Go Platform.
+      tags:
+        - Core
+      responses:
+        200:
+          description: Upload Slot Prepared
+          schema:
+            type: object
+            properties:
+              url:
+                type: string
+                description:
+                  A URL that can be used to retrieve your uploaded file,
+                  or be used as the base `PUT` URL when uploading your file
+              upload_params:
+                type: object
+                description:
+                  A series of authentication parameters to use when uploading
+                  a file. String these together to form the querystring of your `PUT`
+                  request.
+            example:
+              url: https://cohortflow-assets.s3.amazonaws.com/uploads/2cb8e337-eb2a-48aa-a08a-3bced130ff05
+              upload_params:
+                AWSAccessKeyId: "123123"
+                Expires: "1234567890"
+                Signature: "098098098"
+                x-amz-acl: public-read
+  "/students/{student_id}/referrals":
+    get:
+      summary: List Referrals
+      parameters:
+        - name: page
+          in: query
+          type: integer
+          description: Page number to retrieve, starting at 0
+          minimum: 0
+          default: 0
+      responses:
+        "200":
+          description: Successful Response
+          schema:
+            properties:
+              data:
+                type: array
+                items:
+                  "$ref": "#/definitions/StoredStudentReferral"
+              meta:
+                type: object
+                schema:
+                  properties:
+                    page:
+                      type: integer
+                      description: Current Page Number
+                    pages:
+                      type: integer
+                      description: Available Pages
+      tags:
+        - Commission Management
+      consumes:
+        - application/json
+    post:
+      summary: Create Referral
+      parameters:
+        - name: student_referral
+          in: body
+          description: Details of referral being created
+          required: true
+          schema:
+            properties:
+              student_referral:
+                "$ref": "#/definitions/StudentReferral"
+      responses:
+        - "200":
+            description: Referral Created
+            schema:
+              "$ref": "#/definitions/StoredStudentReferral"
+          "400":
+            description: Definition of Referral is invalid
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Commission Management
+      consumes:
+        - application/json
+  "/students/{student_id}/referrals/{id}":
+    get:
+      summary: Retrieve Referral
+      responses:
+        - "200":
+            schema:
+              "$ref": "#/definitions/StoredStudentReferral"
+          "404":
+            description: Referral not found
+      tags:
+        - Commission Management
+      consumes:
+        - application/json
+    put:
+      summary: Update Referral
+      parameters:
+        - name: student_referral
+          in: body
+          description: Updated referral details
+          required: true
+          schema:
+            properties:
+              student_referral:
+                "$ref": "#/definitions/StudentReferral"
+      responses:
+        - "200":
+            description: Referral Updated
+            schema:
+              "$ref": "#/definitions/StoredStudentReferral"
+          "400":
+            description: Updated definition of Referral is invalid
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Commission Management
+      consumes:
+        - application/json
+    delete:
+      summary: Delete Referral
+      responses:
+        - "200":
+            description: Referral deleted
+            schema:
+              properties: {}
+          "400":
+            description: Referral was not able to be deleted
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Commission Management
+      consumes:
+        - application/json
+  "/students/{student_id}/enrolments":
+    get:
+      summary: List Enrolments
+      parameters:
+        - name: page
+          in: query
+          type: integer
+          description: Page number to retrieve, starting at 0
+          minimum: 0
+          default: 0
+      responses:
+        "200":
+          description: Successful Response
+          schema:
+            properties:
+              data:
+                type: array
+                items:
+                  "$ref": "#/definitions/StoredEnrolment"
+              meta:
+                type: object
+                schema:
+                  properties:
+                    page:
+                      type: integer
+                      description: Current Page Number
+                    pages:
+                      type: integer
+                      description: Available Pages
+      tags:
+        - Commission Management
+      consumes:
+        - application/json
+    post:
+      summary: Create Enrolment
+      parameters:
+        - name: enrolment
+          in: body
+          description: Details of enrolment being created
+          required: true
+          schema:
+            properties:
+              enrolment:
+                "$ref": "#/definitions/Enrolment"
+      responses:
+        - "200":
+            description: Enrolment Created
+            schema:
+              "$ref": "#/definitions/StoredEnrolment"
+          "400":
+            description: Definition of Enrolment is invalid
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Commission Management
+      consumes:
+        - application/json
+  "/students/{student_id}/enrolments/{id}":
+    get:
+      summary: Retrieve Enrolment
+      responses:
+        - "200":
+            schema:
+              "$ref": "#/definitions/StoredEnrolment"
+          "404":
+            description: Enrolment not found
+      tags:
+        - Commission Management
+      consumes:
+        - application/json
+    put:
+      summary: Update Enrolment
+      parameters:
+        - name: enrolment
+          in: body
+          description: Updated enrolment details
+          required: true
+          schema:
+            properties:
+              enrolment:
+                "$ref": "#/definitions/Enrolment"
+      responses:
+        - "200":
+            description: Enrolment Updated
+            schema:
+              "$ref": "#/definitions/StoredEnrolment"
+          "400":
+            description: Updated definition of Enrolment is invalid
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Commission Management
+      consumes:
+        - application/json
+    delete:
+      summary: Delete Enrolment
+      responses:
+        - "200":
+            description: Enrolment deleted
+            schema:
+              properties: {}
+          "400":
+            description: Enrolment was not able to be deleted
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Commission Management
+      consumes:
+        - application/json
+  "/students/{student_id}/notes":
+    get:
+      summary: List Contact Notes
+      parameters:
+        - name: page
+          in: query
+          type: integer
+          description: Page number to retrieve, starting at 0
+          minimum: 0
+          default: 0
+      responses:
+        "200":
+          description: Successful Response
+          schema:
+            properties:
+              data:
+                type: array
+                items:
+                  "$ref": "#/definitions/StoredStudentContactNote"
+              meta:
+                type: object
+                schema:
+                  properties:
+                    page:
+                      type: integer
+                      description: Current Page Number
+                    pages:
+                      type: integer
+                      description: Available Pages
+      tags:
+        - Student Management
+      consumes:
+        - application/json
+    post:
+      summary: Create Contact Note
+      parameters:
+        - name: student_contact_note
+          in: body
+          description: Details of contact note being created
+          required: true
+          schema:
+            properties:
+              student_contact_note:
+                "$ref": "#/definitions/StudentContactNote"
+      responses:
+        - "200":
+            description: Contact Note Created
+            schema:
+              "$ref": "#/definitions/StoredStudentContactNote"
+          "400":
+            description: Definition of Contact Note is invalid
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Student Management
+      consumes:
+        - application/json
+  "/students/{student_id}/notes/{id}":
+    get:
+      summary: Retrieve Contact Note
+      responses:
+        - "200":
+            schema:
+              "$ref": "#/definitions/StoredStudentContactNote"
+          "404":
+            description: Contact Note not found
+      tags:
+        - Student Management
+      consumes:
+        - application/json
+    put:
+      summary: Update Contact Note
+      parameters:
+        - name: student_contact_note
+          in: body
+          description: Updated contact note details
+          required: true
+          schema:
+            properties:
+              student_contact_note:
+                "$ref": "#/definitions/StudentContactNote"
+      responses:
+        - "200":
+            description: Contact Note Updated
+            schema:
+              "$ref": "#/definitions/StoredStudentContactNote"
+          "400":
+            description: Updated definition of Contact Note is invalid
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Student Management
+      consumes:
+        - application/json
+    delete:
+      summary: Delete Contact Note
+      responses:
+        - "200":
+            description: Contact Note deleted
+            schema:
+              properties: {}
+          "400":
+            description: Contact Note was not able to be deleted
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Student Management
+      consumes:
+        - application/json
+  "/students/{student_id}/documents":
+    get:
+      summary: List Documents
+      parameters:
+        - name: page
+          in: query
+          type: integer
+          description: Page number to retrieve, starting at 0
+          minimum: 0
+          default: 0
+      responses:
+        "200":
+          description: Successful Response
+          schema:
+            properties:
+              data:
+                type: array
+                items:
+                  "$ref": "#/definitions/Document"
+              meta:
+                type: object
+                schema:
+                  properties:
+                    page:
+                      type: integer
+                      description: Current Page Number
+                    pages:
+                      type: integer
+                      description: Available Pages
+      tags:
+        - Student Management
+      consumes:
+        - application/json
+    post:
+      summary: Create Document
+      parameters:
+        - name: document
+          in: body
+          description: Details of document being created
+          required: true
+          schema:
+            properties:
+              document:
+                "$ref": "#/definitions/Document"
+      responses:
+        - "200":
+            description: Document Created
+            schema:
+              "$ref": "#/definitions/Document"
+          "400":
+            description: Definition of Document is invalid
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Student Management
+      consumes:
+        - application/json
+  "/students/{student_id}/documents/{id}":
+    delete:
+      summary: Delete Document
+      responses:
+        - "200":
+            description: Document deleted
+            schema:
+              properties: {}
+          "400":
+            description: Document was not able to be deleted
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Student Management
+      consumes:
+        - application/json
+  "/students/{student_id}/study_applications":
+    get:
+      summary: List Study Applications
+      parameters:
+        - name: page
+          in: query
+          type: integer
+          description: Page number to retrieve, starting at 0
+          minimum: 0
+          default: 0
+      responses:
+        "200":
+          description: Successful Response
+          schema:
+            properties:
+              data:
+                type: array
+                items:
+                  "$ref": "#/definitions/StudyApplication"
+              meta:
+                type: object
+                schema:
+                  properties:
+                    page:
+                      type: integer
+                      description: Current Page Number
+                    pages:
+                      type: integer
+                      description: Available Pages
+      tags:
+        - Student Management
+      consumes:
+        - application/json
+    post:
+      summary: Create Study Application
+      parameters:
+        - name: study_application
+          in: body
+          description: Details of study application being created
+          required: true
+          schema:
+            properties:
+              study_application:
+                "$ref": "#/definitions/StudyApplication"
+      responses:
+        - "200":
+            description: Study Application Created
+            schema:
+              "$ref": "#/definitions/StudyApplication"
+          "400":
+            description: Definition of Study Application is invalid
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Student Management
+      consumes:
+        - application/json
+  "/students/{student_id}/study_applications/{id}":
+    get:
+      summary: Retrieve Study Application
+      responses:
+        - "200":
+            schema:
+              "$ref": "#/definitions/StudyApplication"
+          "404":
+            description: Study Application not found
+      tags:
+        - Student Management
+      consumes:
+        - application/json
+    put:
+      summary: Update Study Application
+      parameters:
+        - name: study_application
+          in: body
+          description: Updated study application details
+          required: true
+          schema:
+            properties:
+              study_application:
+                "$ref": "#/definitions/StudyApplication"
+      responses:
+        - "200":
+            description: Study Application Updated
+            schema:
+              "$ref": "#/definitions/StudyApplication"
+          "400":
+            description: Updated definition of Study Application is invalid
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Student Management
+      consumes:
+        - application/json
+    delete:
+      summary: Delete Study Application
+      responses:
+        - "200":
+            description: Study Application deleted
+            schema:
+              properties: {}
+          "400":
+            description: Study Application was not able to be deleted
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Student Management
+      consumes:
+        - application/json
+  "/students/{student_id}/visa_applications":
+    get:
+      summary: List Visa Applications
+      parameters:
+        - name: page
+          in: query
+          type: integer
+          description: Page number to retrieve, starting at 0
+          minimum: 0
+          default: 0
+      responses:
+        "200":
+          description: Successful Response
+          schema:
+            properties:
+              data:
+                type: array
+                items:
+                  "$ref": "#/definitions/VisaApplication"
+              meta:
+                type: object
+                schema:
+                  properties:
+                    page:
+                      type: integer
+                      description: Current Page Number
+                    pages:
+                      type: integer
+                      description: Available Pages
+      tags:
+        - Student Management
+      consumes:
+        - application/json
+    post:
+      summary: Create Visa Application
+      parameters:
+        - name: visa_application
+          in: body
+          description: Details of visa application being created
+          required: true
+          schema:
+            properties:
+              visa_application:
+                "$ref": "#/definitions/VisaApplication"
+      responses:
+        - "200":
+            description: Visa Application Created
+            schema:
+              "$ref": "#/definitions/VisaApplication"
+          "400":
+            description: Definition of Visa Application is invalid
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Student Management
+      consumes:
+        - application/json
+  "/students/{student_id}/visa_applications/{id}":
+    get:
+      summary: Retrieve Visa Application
+      responses:
+        - "200":
+            schema:
+              "$ref": "#/definitions/VisaApplication"
+          "404":
+            description: Visa Application not found
+      tags:
+        - Student Management
+      consumes:
+        - application/json
+    put:
+      summary: Update Visa Application
+      parameters:
+        - name: visa_application
+          in: body
+          description: Updated visa application details
+          required: true
+          schema:
+            properties:
+              visa_application:
+                "$ref": "#/definitions/VisaApplication"
+      responses:
+        - "200":
+            description: Visa Application Updated
+            schema:
+              "$ref": "#/definitions/VisaApplication"
+          "400":
+            description: Updated definition of Visa Application is invalid
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Student Management
+      consumes:
+        - application/json
+    delete:
+      summary: Delete Visa Application
+      responses:
+        - "200":
+            description: Visa Application deleted
+            schema:
+              properties: {}
+          "400":
+            description: Visa Application was not able to be deleted
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Student Management
+      consumes:
+        - application/json
+  "/students/{student_id}/payment_plans":
+    get:
+      summary: List Payment Plans
+      parameters:
+        - name: page
+          in: query
+          type: integer
+          description: Page number to retrieve, starting at 0
+          minimum: 0
+          default: 0
+      responses:
+        "200":
+          description: Successful Response
+          schema:
+            properties:
+              data:
+                type: array
+                items:
+                  "$ref": "#/definitions/StudentPaymentPlan"
+              meta:
+                type: object
+                schema:
+                  properties:
+                    page:
+                      type: integer
+                      description: Current Page Number
+                    pages:
+                      type: integer
+                      description: Available Pages
+      tags:
+        - Student Management
+      consumes:
+        - application/json
+    post:
+      summary: Create Payment Plan
+      parameters:
+        - name: student_payment_plan
+          in: body
+          description: Details of payment plan being created
+          required: true
+          schema:
+            properties:
+              student_payment_plan:
+                "$ref": "#/definitions/StudentPaymentPlan"
+      responses:
+        - "200":
+            description: Payment Plan Created
+            schema:
+              "$ref": "#/definitions/StudentPaymentPlan"
+          "400":
+            description: Definition of Payment Plan is invalid
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Student Management
+      consumes:
+        - application/json
+  "/students/{student_id}/payment_plans/{id}":
+    get:
+      summary: Retrieve Payment Plan
+      responses:
+        - "200":
+            schema:
+              "$ref": "#/definitions/StudentPaymentPlan"
+          "404":
+            description: Payment Plan not found
+      tags:
+        - Student Management
+      consumes:
+        - application/json
+    put:
+      summary: Update Payment Plan
+      parameters:
+        - name: student_payment_plan
+          in: body
+          description: Updated payment plan details
+          required: true
+          schema:
+            properties:
+              student_payment_plan:
+                "$ref": "#/definitions/StudentPaymentPlan"
+      responses:
+        - "200":
+            description: Payment Plan Updated
+            schema:
+              "$ref": "#/definitions/StudentPaymentPlan"
+          "400":
+            description: Updated definition of Payment Plan is invalid
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Student Management
+      consumes:
+        - application/json
+    delete:
+      summary: Delete Payment Plan
+      responses:
+        - "200":
+            description: Payment Plan deleted
+            schema:
+              properties: {}
+          "400":
+            description: Payment Plan was not able to be deleted
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Student Management
+      consumes:
+        - application/json
+  "/contacts":
+    get:
+      summary: List Agent Profiles
+      parameters:
+        - name: page
+          in: query
+          type: integer
+          description: Page number to retrieve, starting at 0
+          minimum: 0
+          default: 0
+      responses:
+        "200":
+          description: Successful Response
+          schema:
+            properties:
+              data:
+                type: array
+                items:
+                  "$ref": "#/definitions/AgentProfile"
+              meta:
+                type: object
+                schema:
+                  properties:
+                    page:
+                      type: integer
+                      description: Current Page Number
+                    pages:
+                      type: integer
+                      description: Available Pages
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+    post:
+      summary: Create Agent Profile
+      parameters:
+        - name: agent_profile
+          in: body
+          description: Details of agent profile being created
+          required: true
+          schema:
+            properties:
+              agent_profile:
+                "$ref": "#/definitions/AgentProfile"
+      responses:
+        - "200":
+            description: Agent Profile Created
+            schema:
+              "$ref": "#/definitions/AgentProfile"
+          "400":
+            description: Definition of Agent Profile is invalid
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+  "/contacts/{id}":
+    get:
+      summary: Retrieve Agent Profile
+      responses:
+        - "200":
+            schema:
+              "$ref": "#/definitions/AgentProfile"
+          "404":
+            description: Agent Profile not found
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+    put:
+      summary: Update Agent Profile
+      parameters:
+        - name: agent_profile
+          in: body
+          description: Updated agent profile details
+          required: true
+          schema:
+            properties:
+              agent_profile:
+                "$ref": "#/definitions/AgentProfile"
+      responses:
+        - "200":
+            description: Agent Profile Updated
+            schema:
+              "$ref": "#/definitions/AgentProfile"
+          "400":
+            description: Updated definition of Agent Profile is invalid
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+    delete:
+      summary: Delete Agent Profile
+      responses:
+        - "200":
+            description: Agent Profile deleted
+            schema:
+              properties: {}
+          "400":
+            description: Agent Profile was not able to be deleted
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+  "/contacts/{contact_id}/branches":
+    get:
+      summary: List Branches
+      parameters:
+        - name: page
+          in: query
+          type: integer
+          description: Page number to retrieve, starting at 0
+          minimum: 0
+          default: 0
+      responses:
+        "200":
+          description: Successful Response
+          schema:
+            properties:
+              data:
+                type: array
+                items:
+                  "$ref": "#/definitions/AgentProfileBranch"
+              meta:
+                type: object
+                schema:
+                  properties:
+                    page:
+                      type: integer
+                      description: Current Page Number
+                    pages:
+                      type: integer
+                      description: Available Pages
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+    post:
+      summary: Create Branch
+      parameters:
+        - name: agent_profile_branch
+          in: body
+          description: Details of branch being created
+          required: true
+          schema:
+            properties:
+              agent_profile_branch:
+                "$ref": "#/definitions/AgentProfileBranch"
+      responses:
+        - "200":
+            description: Branch Created
+            schema:
+              "$ref": "#/definitions/AgentProfileBranch"
+          "400":
+            description: Definition of Branch is invalid
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+  "/contacts/{contact_id}/branches/{id}":
+    get:
+      summary: Retrieve Branch
+      responses:
+        - "200":
+            schema:
+              "$ref": "#/definitions/AgentProfileBranch"
+          "404":
+            description: Branch not found
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+    put:
+      summary: Update Branch
+      parameters:
+        - name: agent_profile_branch
+          in: body
+          description: Updated branch details
+          required: true
+          schema:
+            properties:
+              agent_profile_branch:
+                "$ref": "#/definitions/AgentProfileBranch"
+      responses:
+        - "200":
+            description: Branch Updated
+            schema:
+              "$ref": "#/definitions/AgentProfileBranch"
+          "400":
+            description: Updated definition of Branch is invalid
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+    delete:
+      summary: Delete Branch
+      responses:
+        - "200":
+            description: Branch deleted
+            schema:
+              properties: {}
+          "400":
+            description: Branch was not able to be deleted
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+  "/contacts/{contact_id}/staff_members":
+    get:
+      summary: List Staff Members
+      parameters:
+        - name: page
+          in: query
+          type: integer
+          description: Page number to retrieve, starting at 0
+          minimum: 0
+          default: 0
+      responses:
+        "200":
+          description: Successful Response
+          schema:
+            properties:
+              data:
+                type: array
+                items:
+                  "$ref": "#/definitions/AgentStaffMember"
+              meta:
+                type: object
+                schema:
+                  properties:
+                    page:
+                      type: integer
+                      description: Current Page Number
+                    pages:
+                      type: integer
+                      description: Available Pages
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+    post:
+      summary: Create Staff Member
+      parameters:
+        - name: agent_staff_member
+          in: body
+          description: Details of staff member being created
+          required: true
+          schema:
+            properties:
+              agent_staff_member:
+                "$ref": "#/definitions/AgentStaffMember"
+      responses:
+        - "200":
+            description: Staff Member Created
+            schema:
+              "$ref": "#/definitions/AgentStaffMember"
+          "400":
+            description: Definition of Staff Member is invalid
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+  "/contacts/{contact_id}/staff_members/{id}":
+    get:
+      summary: Retrieve Staff Member
+      responses:
+        - "200":
+            schema:
+              "$ref": "#/definitions/AgentStaffMember"
+          "404":
+            description: Staff Member not found
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+    put:
+      summary: Update Staff Member
+      parameters:
+        - name: agent_staff_member
+          in: body
+          description: Updated staff member details
+          required: true
+          schema:
+            properties:
+              agent_staff_member:
+                "$ref": "#/definitions/AgentStaffMember"
+      responses:
+        - "200":
+            description: Staff Member Updated
+            schema:
+              "$ref": "#/definitions/AgentStaffMember"
+          "400":
+            description: Updated definition of Staff Member is invalid
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+    delete:
+      summary: Delete Staff Member
+      responses:
+        - "200":
+            description: Staff Member deleted
+            schema:
+              properties: {}
+          "400":
+            description: Staff Member was not able to be deleted
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+  "/contacts/{contact_id}/tasks":
+    get:
+      summary: List Tasks
+      parameters:
+        - name: page
+          in: query
+          type: integer
+          description: Page number to retrieve, starting at 0
+          minimum: 0
+          default: 0
+      responses:
+        "200":
+          description: Successful Response
+          schema:
+            properties:
+              data:
+                type: array
+                items:
+                  "$ref": "#/definitions/Task"
+              meta:
+                type: object
+                schema:
+                  properties:
+                    page:
+                      type: integer
+                      description: Current Page Number
+                    pages:
+                      type: integer
+                      description: Available Pages
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+    post:
+      summary: Create Task
+      parameters:
+        - name: task
+          in: body
+          description: Details of task being created
+          required: true
+          schema:
+            properties:
+              task:
+                "$ref": "#/definitions/Task"
+      responses:
+        - "200":
+            description: Task Created
+            schema:
+              "$ref": "#/definitions/Task"
+          "400":
+            description: Definition of Task is invalid
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+  "/contacts/{contact_id}/tasks/{id}":
+    delete:
+      summary: Delete Task
+      responses:
+        - "200":
+            description: Task deleted
+            schema:
+              properties: {}
+          "400":
+            description: Task was not able to be deleted
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+  "/contacts/{contact_id}/notes":
+    get:
+      summary: List Agent Notes
+      parameters:
+        - name: page
+          in: query
+          type: integer
+          description: Page number to retrieve, starting at 0
+          minimum: 0
+          default: 0
+      responses:
+        "200":
+          description: Successful Response
+          schema:
+            properties:
+              data:
+                type: array
+                items:
+                  "$ref": "#/definitions/AgentNote"
+              meta:
+                type: object
+                schema:
+                  properties:
+                    page:
+                      type: integer
+                      description: Current Page Number
+                    pages:
+                      type: integer
+                      description: Available Pages
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+    post:
+      summary: Create Agent Note
+      parameters:
+        - name: agent_note
+          in: body
+          description: Details of agent note being created
+          required: true
+          schema:
+            properties:
+              agent_note:
+                "$ref": "#/definitions/AgentNote"
+      responses:
+        - "200":
+            description: Agent Note Created
+            schema:
+              "$ref": "#/definitions/AgentNote"
+          "400":
+            description: Definition of Agent Note is invalid
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+  "/contacts/{contact_id}/notes/{id}":
+    delete:
+      summary: Delete Agent Note
+      responses:
+        - "200":
+            description: Agent Note deleted
+            schema:
+              properties: {}
+          "400":
+            description: Agent Note was not able to be deleted
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+  "/contacts/{contact_id}/documents":
+    get:
+      summary: List Documents
+      parameters:
+        - name: page
+          in: query
+          type: integer
+          description: Page number to retrieve, starting at 0
+          minimum: 0
+          default: 0
+      responses:
+        "200":
+          description: Successful Response
+          schema:
+            properties:
+              data:
+                type: array
+                items:
+                  "$ref": "#/definitions/Document"
+              meta:
+                type: object
+                schema:
+                  properties:
+                    page:
+                      type: integer
+                      description: Current Page Number
+                    pages:
+                      type: integer
+                      description: Available Pages
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+    post:
+      summary: Create Document
+      parameters:
+        - name: document
+          in: body
+          description: Details of document being created
+          required: true
+          schema:
+            properties:
+              document:
+                "$ref": "#/definitions/Document"
+      responses:
+        - "200":
+            description: Document Created
+            schema:
+              "$ref": "#/definitions/Document"
+          "400":
+            description: Definition of Document is invalid
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+  "/contacts/{contact_id}/documents/{id}":
+    delete:
+      summary: Delete Document
+      responses:
+        - "200":
+            description: Document deleted
+            schema:
+              properties: {}
+          "400":
+            description: Document was not able to be deleted
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+  "/contacts/{contact_id}/shared_documents":
+    get:
+      summary: List Shared Documents
+      parameters:
+        - name: page
+          in: query
+          type: integer
+          description: Page number to retrieve, starting at 0
+          minimum: 0
+          default: 0
+      responses:
+        "200":
+          description: Successful Response
+          schema:
+            properties:
+              data:
+                type: array
+                items:
+                  "$ref": "#/definitions/SharedDocument"
+              meta:
+                type: object
+                schema:
+                  properties:
+                    page:
+                      type: integer
+                      description: Current Page Number
+                    pages:
+                      type: integer
+                      description: Available Pages
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+    post:
+      summary: Create Shared Document
+      parameters:
+        - name: shared_document
+          in: body
+          description: Details of shared document being created
+          required: true
+          schema:
+            properties:
+              shared_document:
+                "$ref": "#/definitions/SharedDocument"
+      responses:
+        - "200":
+            description: Shared Document Created
+            schema:
+              "$ref": "#/definitions/SharedDocument"
+          "400":
+            description: Definition of Shared Document is invalid
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+  "/contacts/{contact_id}/shared_documents/{id}":
+    delete:
+      summary: Delete Shared Document
+      responses:
+        - "200":
+            description: Shared Document deleted
+            schema:
+              properties: {}
+          "400":
+            description: Shared Document was not able to be deleted
+            schema:
+              "$ref": "#/definitions/Error"
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+  "/regions":
+    get:
+      summary: List Agent Regions
+      parameters:
+        - name: page
+          in: query
+          type: integer
+          description: Page number to retrieve, starting at 0
+          minimum: 0
+          default: 0
+      responses:
+        "200":
+          description: Successful Response
+          schema:
+            properties:
+              data:
+                type: array
+                items:
+                  "$ref": "#/definitions/AgentRegion"
+              meta:
+                type: object
+                schema:
+                  properties:
+                    page:
+                      type: integer
+                      description: Current Page Number
+                    pages:
+                      type: integer
+                      description: Available Pages
+      tags:
+        - Agent Management
+      consumes:
+        - application/json
+  "/users":
+    get:
+      summary: List Users
+      parameters:
+        - name: page
+          in: query
+          type: integer
+          description: Page number to retrieve, starting at 0
+          minimum: 0
+          default: 0
+      responses:
+        "200":
+          description: Successful Response
+          schema:
+            properties:
+              data:
+                type: array
+                items:
+                  "$ref": "#/definitions/User"
+              meta:
+                type: object
+                schema:
+                  properties:
+                    page:
+                      type: integer
+                      description: Current Page Number
+                    pages:
+                      type: integer
+                      description: Available Pages
+      tags:
+        - Access Control
+      consumes:
+        - application/json
+  "/institutions":
+    get:
+      summary: List Institutions
+      parameters:
+        - name: page
+          in: query
+          type: integer
+          description: Page number to retrieve, starting at 0
+          minimum: 0
+          default: 0
+      responses:
+        "200":
+          description: Successful Response
+          schema:
+            properties:
+              data:
+                type: array
+                items:
+                  "$ref": "#/definitions/Institution"
+              meta:
+                type: object
+                schema:
+                  properties:
+                    page:
+                      type: integer
+                      description: Current Page Number
+                    pages:
+                      type: integer
+                      description: Available Pages
+      tags:
+        - Commission Management
+      consumes:
+        - application/json
+  "/students/{id}/services/insurance/quote":
+    get:
+      summary: Retrieve insurance Quotes
+      description: Retrieves insurance quotes for a student.
+      tags:
+        - Insurance
+      parameters:
+        - in: path
+          name: id
+          type: string
+          required: true
+          description: The ID of the student.
+        - name: course_start_date
+          description: Start date of the student's course, specified as YYYY-MM-DD.
+          in: query
+          type: string
+          format: date
+        - name: course_finish_date
+          description: Finish date of the student's course, specified as YYYY-MM-DD.
+          in: query
+          type: string
+          format: date
+        - name: visa_start_date
+          description: Start date of the student's intended visa, specified as YYYY-MM-DD.
+          in: query
+          type: string
+          format: date
+        - name: visa_finish_date
+          description: Finish date of the student's intended visa, specified as YYYY-MM-DD.
+          in: query
+          type: string
+          format: date
+        - name: adults
+          description:
+            Number of adults to be covered by the policy (the student, regardless
+            of age, counts as an adult)
+          in: query
+          type: integer
+        - name: children
+          description: Number of children to be covered by the policy.
+          in: query
+          type: integer
+      responses:
+        "200":
+          description: Quotes
+          schema:
+            type: array
+            items:
+              "$ref": "#/definitions/InsuranceQuote"
+  "/students/{id}/services/insurance/policy_applications":
+    post:
+      summary: Create Insurance policy
+      description: Create a new Insurance policy for a student
+      tags:
+        - Insurance
+      consumes:
+        - application/json
+      parameters:
+        - in: path
+          name: id
+          type: integer
+          required: true
+          description: The ID of the student.
+        - name: policy_application
+          in: body
+          description: Details of the policy application to be created
+          required: true
+          schema:
+            properties:
+              policy_application:
+                "$ref": "#/definitions/NewInsurancePolicyApplication"
+      responses:
+        "200":
+          description: Policy Application
+          schema:
+            "$ref": "#/definitions/StoredInsurancePolicyApplication"
+        "400":
+          description: Invalid Policy Application
+          schema:
+            "$ref": "#/definitions/Error"
+  "/students/{id}/services/payments/invoices":
+    post:
+      summary: Create Invoice
+      description:
+        "Create an invoice that is to be paid by the student, such as a
+        tuition or accomodation invoice."
+      tags:
+        - Payments
+      consumes:
+        - application/json
+      parameters:
+        - in: path
+          name: id
+          type: integer
+          required: true
+          description: The ID of the student.
+        - name: invoice
+          in: body
+          description: Details of the invoice being created
+          required: true
+          schema:
+            properties:
+              invoice:
+                "$ref": "#/definitions/NewCohortpayStudentInvoice"
+      responses:
+        "200":
+          description: Invoice
+          schema:
+            "$ref": "#/definitions/StoredCohortpayStudentInvoice"
+        "400":
+          description: Invalid Invoice
+          schema:
+            "$ref": "#/definitions/Error"
+  "/students/{id}/services/payments/payment_requests":
+    post:
+      summary: Create Payment Request
+      description:
+        "Creates a payment request for providing to a student detailing
+        one or many invoices that should be paid."
+      consumes:
+        - application/json
+      tags:
+        - Payments
+      parameters:
+        - in: path
+          name: id
+          type: string
+          required: true
+          description: The ID of the student.
+        - name: payment_request
+          in: body
+          description: Details of the request to create
+          required: true
+          schema:
+            properties:
+              payment_request:
+                "$ref": "#/definitions/NewCohortpayPaymentRequest"
+      responses:
+        "200":
+          description: Request Created
+          schema:
+            "$ref": "#/definitions/StoredCohortpayPaymentRequest"
+  "/services/payments/provider_invoices":
+    post:
+      summary: Invoice Upload
+      description: |
+        The Provider Invoices endpoint enables a provider to deliver details
+        of an invoice that is expecting payment.
+      consumes:
+        - application/json
+      parameters:
+        - name: invoice
+          in: body
+          description: The invoice being uploaded.
+          required: true
+          schema:
+            properties:
+              invoice:
+                "$ref": "#/definitions/NewCohortpayProviderInvoice"
+      tags:
+        - Payments
+      responses:
+        200:
+          description: Invoice created
+          schema:
+            "$ref": "#/definitions/StoredCohortpayProviderInvoice"
+        400:
+          description: Invoice data invalid
+          schema:
+            "$ref": "#/definitions/Error"
+        default:
+          description: Unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+    get:
+      summary: List Invoices for a Provider
+      description: |
+        Return a list of all completed payment received by your organisation.
+        A payment is marked as being complete once all funds have settled and been reconciled.
+      tags:
+        - Payments
+      parameters:
+        - name: updated_since
+          in: query
+          type: string
+          format: datetime
+          description: The minimum update timestamp on the invoices to return
+        - name: limit
+          in: query
+          type: number
+          format: integer
+          description: The maximum number of records to return
+          maximum: 50
+          default: 30
+      responses:
+        200:
+          description: Successful response
+          schema:
+            type: array
+            items:
+              "$ref": "#/definitions/StoredCohortpayProviderInvoice"
+        404:
+          description: Unable to find payments for account
+          schema:
+            "$ref": "#/definitions/Error"
+definitions:
+  Error:
+    type: object
+    properties:
+      message:
+        type: string
+        description: Human readable message indicating what error occurred.
+      errors:
+        type: object
+        description: Mapping of input key to error message
+  Student:
+    type: object
+    properties:
+      title:
+        type: string
+        description: The student's honorific title.
+      given_name:
+        type: string
+        description: The student's given (first) name, as it appears on their passport.
+      family_name:
+        type: string
+        description: The student's family (last) name, as it appears on their passport.
+      gender:
+        type: string
+        description: The student's gender.
+        enum:
+          - male
+          - female
+      email:
+        type: string
+        description: The student's email address
+      home_country:
+        type: string
+        description:
+          The student's home country, expressed as an ISO 3166-1 alpha-2
+          country code (such as CN, IN, etc)
+      destination_country:
+        type: string
+        description:
+          The student's intended destination country, expressed as an ISO
+          3166-1 alpha-2 country code (such as AU, NZ, US, etc)
+      dob:
+        type: string
+        format: date
+        description: The student's date of birth, specified as YYYY-MM-DD.
+      mobile:
+        type: string
+        description: The student's phone number.
+      passport_number:
+        type: string
+        description: The student's passport number.
+    example:
+      title: Mr
+      given_name: John
+      family_name: Smith
+      gender: male
+      email: user@example.com
+      home_country: CN
+      destination_country: AU
+      dob: "1990-05-20"
+      mobile: 61 412 123 123
+      passport_number: A1231234
+  StoredStudentReferral:
+    type: object
+    allOf:
+      - "$ref": "#/definitions/StudentReferral"
+      - properties:
+          id:
+            type: integer
+            description: Unique identifier of the referral.
+            usage: read
+  StudentReferral:
+    type: object
+    properties:
+      start_date:
+        type: string
+        format: date
+        description: Date that the referral is valid from
+      finish_date:
+        type: string
+        format: date
+        description:
+          Date that the referral is valid until. Missing means that the
+          referral has no end.
+      session:
+        type: string
+        description: |
+          A session allows for a referral to be grouped with other referrals based upon a customer-driven
+          grouping factor (eg, a term like T1 or a semester like S1, S2)
+      agent_profile:
+        type: object
+        schema:
+          properties:
+            id:
+              type: integer
+              description: ID of the contact record that this referral belongs to
+      agent_profile_branch:
+        type: object
+        schema:
+          properties:
+            id:
+              type: integer
+              description:
+                ID of the branch record that this referral belongs to.
+                Must belong to the associated contact.
+  StoredEnrolment:
+    type: object
+    allOf:
+      - "$ref": "#/definitions/Enrolment"
+      - properties:
+          id:
+            type: integer
+            description: Unique identifier of the enrolment.
+            usage: read
+  Enrolment:
+    type: object
+    properties:
+      commencement_date:
+        type: string
+        format: date
+        description: Date that the enrolment starts.
+      finish_date:
+        type: string
+        format: date
+        description: Date that the enrolment finishes.
+      student_number:
+        type: string
+        description: "The unique identifier of the student."
+      units:
+        type: integer
+        description: A unit count representing the student's enrolled load.
+      amount_paid:
+        type: number
+        description: The amount that the student has or will pay for the enrolment.
+      fully_paid:
+        type: boolean
+        description: Whether the enrolment has been fully paid to the institution.
+  StoredStudentContactNote:
+    type: object
+    allOf:
+      - "$ref": "#/definitions/StudentContactNote"
+      - properties:
+          id:
+            type: integer
+            description: Unique identifier of the note.
+            usage: read
+          user:
+            type: object
+            usage: read
+            schema:
+              properties:
+                id:
+                  type: integer
+                  description: ID of the user that created this note.
+  StudentContactNote:
+    type: object
+    properties:
+      date:
+        type: string
+        format: date
+        description: The relevant date of the note.
+      note_type:
+        type: string
+        description:
+          The type of the note. Can be a built-in type like 'internal'
+          or 'contact', or a reference to a custom type.
+      contact_type:
+        type: string
+        description: The type of contact that was made.
+        enum:
+          - in-person
+          - phone
+          - email
+          - online-meeting
+          - other
+      notes:
+        type: string
+        description: The note content.
+  Document:
+    type: object
+  StudyApplication:
+    type: object
+  VisaApplication:
+    type: object
+  StudentPaymentPlan:
+    type: object
+  AgentProfile:
+    type: object
+  AgentProfileBranch:
+    type: object
+  AgentStaffMember:
+    type: object
+  Task:
+    type: object
+  AgentNote:
+    type: object
+  SharedDocument:
+    type: object
+  AgentRegion:
+    type: object
+  User:
+    type: object
+  Institution:
+    type: object
+    properties:
+      id:
+        type: integer
+        description: Unique identifier of the institution.
+      name:
+        type: string
+        description: Name of the institution.
+  NewCohortpayProviderInvoice:
+    type: object
+    allOf:
+      - "$ref": "#/definitions/BaseCohortpayProviderInvoice"
+      - properties:
+          document_upload_url:
+            type: string
+            description: |
+              URL for Cohortpay to retrieve the invoice from. If no URL is available for the invoice, use the
+              `/files/request_upload_endpoint` endpoint to upload the invoice and receive a URL or provide
+              the invoice content via the `document` endpoint encoded as base64.
+          document_data:
+            type: string
+            description:
+              "A base64 encoded data: URL containing the content to upload.
+              For example, \n`data:application/pdf;base64,/9j/4AAQSkZJ...`.\n"
+        required:
+          - reference
+          - amount
+          - document_upload_url
+        example:
+          student:
+            email: stu@dent.com
+            given_name: Stu
+            family_name: Dent
+            dob: "1990-05-18"
+            passport_number: M1231234
+            home_country: VN
+          student_number: "12341234"
+          reference: INV-1234
+          amount: 500.05
+          description: Initial Deposit
+          document_upload_url: https://cohortflow-assets.s3.amazonaws.com/uploads/2cb8e337-eb2a-48aa-a08a-3bced130ff05
+  StoredCohortpayProviderInvoice:
+    type: object
+    allOf:
+      - "$ref": "#/definitions/BaseCohortpayProviderInvoice"
+      - properties:
+          state:
+            type: string
+            enum:
+              - uploaded
+              - awaiting_funds
+              - funds_received
+              - completed
+            description: |
+              The current state of this Invoice. Invoices that have been uploaded by the provider but a student
+              has not created a transaction will be reported as `uploaded`. Where a student has created a transaction
+              but not yet paid, the transaction will be reported as `awaiting_funds`. Where funds have been received
+              but not yet remitted to the institution, the transaction will be reported as `funds_received`. Where
+              payment has been made to the institution, the transaction will be reported as `completed`.
+          payment_remitted:
+            type: string
+            format: date
+            description:
+              The date that payment was transferred to your account, specified
+              as YYYY-MM-DD.
+          document_url:
+            type: string
+            description:
+              Public download URL for this document. This URL will expire
+              five minutes after being generated.
+          payment_url:
+            type: string
+            description:
+              A URL that can be opened to enable a student to make a payment
+              including this invoice.
+    example:
+      state: uploaded
+      payment_remitted: "2018-08-19"
+      document_link: https://example.com/document/doc.pdf
+      payment_url: https://payments.cohortgo.com/r/aBasc2as
+  BaseCohortpayProviderInvoice:
+    type: object
+    properties:
+      student:
+        "$ref": "#/definitions/CohortpayInvoiceStudent"
+      student_number:
+        type: string
+        description: Institution specific identifier for this Student.
+      reference:
+        description: Internal reference number for this invoice.
+        type: string
+      amount:
+        type: number
+        format: float
+        description:
+          The total amount paid on this invoice. This should be in the
+          major currency unit of the currency (eg, 5.18 is $5 and 18c for AUD)
+      description:
+        type: string
+        description: Human-readable description of the invoice.
+      breakdowns:
+        type: array
+        items:
+          "$ref": "#/definitions/CohortpayProviderInvoiceBreakdown"
+  CohortpayProviderInvoiceBreakdown:
+    type: object
+    properties:
+      name:
+        type: string
+        description: Descriptor for this line item
+      account:
+        type: string
+        description: "Category for this line item. Example: `tuition`, `oshc` etc."
+      amount:
+        type: number
+        format: float
+        description:
+          The subtotal amount for this item. This should be in the major
+          currency unit of the currency (eg, 5.18 is $5 and 18c for AUD)
+  CohortpayInvoiceStudent:
+    type: object
+    properties:
+      email:
+        type: string
+        description:
+          Email address for the Student. This must be unique for the system,
+          and may be used to match against existing Students
+      home_country:
+        type: string
+        description:
+          The country that the Student calls Home, expressed as an ISO
+          3166-1 alpha-2 country code (such as CN, IN, etc)
+      given_name:
+        type: string
+        description: The primary name used to refer to a Person.
+      family_name:
+        type: string
+        description:
+          The secondary name (sometimes shared between other family members)
+          used to distinguish the Primary name.
+      dob:
+        type: string
+        format: date
+        description:
+          The formal birth date (Date of Birth) of the Student, specified
+          as YYYY-MM-DD.
+      passport_number:
+        type: string
+        format: string
+        description: The student's passport number.
+      phone_number:
+        type: string
+        format: string
+        description: The student's phone number
+  NewCohortpayStudentInvoice:
+    type: object
+    allOf:
+      - "$ref": "#/definitions/BaseCohortpayStudentInvoice"
+      - properties:
+          document_upload_url:
+            description: |
+              URL for Cohortpay to retrieve the invoice from. If no URL is available for the invoice, use the
+              `/files/request_upload_endpoint` endpoint to upload the invoice and receive a URL.
+            type: string
+      - example:
+          institution_name: University of Melbourne
+          document_upload_url: https://cohortflow-assets.s3.amazonaws.com/uploads/2cb8e337-eb2a-48aa-a08a-3bced130ff05?sig=abc123
+          currency: AUD
+          amount: 12000.81
+  StoredCohortpayStudentInvoice:
+    type: object
+    allOf:
+      - "$ref": "#/definitions/BaseCohortpayStudentInvoice"
+      - properties:
+          payment_reference:
+            type: string
+            description: |
+              Internal reference that can be provided to the /payment_requests endpoint to
+              include this policy in a payment request.
+        example:
+          institution_name: University of Melbourne
+          document_upload_url: https://cohortflow-assets.s3.amazonaws.com/uploads/2cb8e337-eb2a-48aa-a08a-3bced130ff05?sig=abc123
+          currency: AUD
+          amount: 12000.82
+          payment_reference: invoice:1234
+  BaseCohortpayStudentInvoice:
+    type: object
+    properties:
+      institution_name:
+        description:
+          The name of the provider this invoice is paying (for example,
+          University of Melbourne)
+        type: string
+      currency:
+        description: Currency of the invoice to be paid.
+        type: string
+      amount:
+        description:
+          Amount to be paid on the invoice. This should be in the major
+          currency unit of the currency (eg, 5.18 is $5 and 18c for AUD).
+        type: number
+        format: float
+  NewCohortpayPaymentRequest:
+    type: object
+    properties:
+      description:
+        type: string
+        description: A description of what this payment request is intended to pay
+      invoice_payment_references:
+        description: The payment references of the invoices and other items to include.
+        type: array
+        items:
+          type: string
+    example:
+      description: Tuition Deposit and OSHC for enrolment at University of Melbourne
+      invoice_payment_references:
+        - invoice:1234
+        - oshcaustralia:OSHC1234512345
+  StoredCohortpayPaymentRequest:
+    type: object
+    properties:
+      description:
+        type: string
+        description: A description of what this payment request is intended to pay
+      link:
+        type: string
+        description: A URL that can be provided to a student/payer for payment.
+    example:
+      description: Tuition Deposit and OSHC for enrolment at University of Melbourne
+      link: https://cohortpay.com/r/abc123
+  InsuranceQuote:
+    type: object
+    properties:
+      policy_type:
+        type: string
+        description: The type of the insurance policy.
+      provider:
+        type: string
+        description:
+          The name of the Insurance provider (eg, NIB, AHM, Medibank, Bupa,
+          Allianz).
+      currency:
+        type: string
+        description:
+          The currency of the quote, expressed as an ISO 4217 alpha3 currency
+          code.
+      amount:
+        type: number
+        format: float
+        description:
+          The chargeable price for the policy. This will be in the major
+          currency unit of the currency (eg, 5.18 is $5 and 18c for AUD)
+    example:
+      policy_type: OSHC
+      provider: NIB
+      policy_start: "2017-01-01"
+      policy_end: "2018-12-31"
+      currency: AUD
+      amount: 960.12
+  BaseInsurancePolicyApplication:
+    type: object
+    properties:
+      provider:
+        type: string
+        description:
+          The provider to purchase the policy with. Must be a provider
+          name as returned by the quotes endpoint.
+      institution_name:
+        type: string
+        description: Name of the institution that the student will be studying at.
+      partner:
+        description: Any partner to include on the policy.
+        "$ref": "#/definitions/InsuranceDependent"
+      other_dependents:
+        description: Any other dependents (children) to include on the policy.
+        type: array
+        items:
+          "$ref": "#/definitions/InsuranceDependent"
+  NewInsurancePolicyApplication:
+    type: object
+    allOf:
+      - "$ref": "#/definitions/BaseInsurancePolicyApplication"
+      - properties:
+          course_start_date:
+            description:
+              Start date of the student's course. Not required if visa start
+              date is provided.
+            type: string
+          course_finish_date:
+            description:
+              Finish date of the student's course. Not required if visa finish
+              date is provided.
+            type: string
+          visa_start_date:
+            description:
+              Start date of the student's intended visa. Not required if
+              course start date is provided.
+            type: string
+          visa_finish_date:
+            description:
+              Finish date of the student's intended visa. Not required if
+              the course finish date is provided.
+            type: string
+        example:
+          provider: NIB
+          institution_name: University of Sydney
+          course_start_date: "2016-02-01"
+          course_finish_date: "2018-11-30"
+  StoredInsurancePolicyApplication:
+    type: object
+    allOf:
+      - "$ref": "#/definitions/BaseInsurancePolicyApplication"
+      - properties:
+          id:
+            type: string
+            description: Identifier for this policy application.
+          payment_reference:
+            type: string
+            description:
+              Internal reference that can be provided to the /payment_requests
+              endpoint to include this policy in a payment request.
+          policy_start:
+            type: string
+            format: date
+            description: The start date of the policy, specified as YYYY-MM-DD.
+          policy_end:
+            type: string
+            format: date
+            description: The finish date of the policy, specified as YYYY-MM-DD.
+          currency:
+            type: string
+            description: Currency of the policy.
+          quoted_price:
+            type: number
+            format: float
+            description: The quoted price for the policy.
+          status:
+            type: string
+            description: Status of the policy.
+            enum:
+              - unpaid
+              - processing
+              - completed
+        example:
+          reference: OSHC1234512345
+          payment_reference: oshcaustralia:OSHC1234512345
+          provider: NIB
+          policy_start: "2016-01-01"
+          policy_end: "2019-03-15"
+          currency: AUD
+          quoted_price: 600.11
+  InsuranceDependent:
+    type: object
+    properties:
+      gender:
+        type: string
+        description: The dependent's gender.
+        enum:
+          - male
+          - female
+      dob:
+        type: string
+        description:
+          The dependent's date of birth, specified as YYYY-MM-DD. Note
+          that insurer specific rules apply around the age of dependents.
+        format: date
+      title:
+        type: string
+        description: The honorific title of the dependent.
+        enum:
+          - Mr
+          - Mrs
+          - Ms
+          - Miss
+      given_name:
+        type: string
+        description:
+          The given (first) name(s) of the dependent, as shown on their
+          passport.
+      family_name:
+        type: string
+        description:
+          The family (last) name(s) of the dependent, as shown on their
+          passport.
