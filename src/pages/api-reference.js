@@ -7,7 +7,7 @@ export default ({ data }) => {
   return (
     <Layout>
       <Container>
-        <ApiRef />
+          <ApiRef />
       </Container>
     </Layout>
   )

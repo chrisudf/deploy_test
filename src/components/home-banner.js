@@ -2,7 +2,6 @@ import React from "react"
 import { Col, Row } from "react-bootstrap"
 import styles from "../style/home-banner.module.css"
 
-
 const HomeBanner = () => (
   <div className={styles.bgImage}>
     <Col xs={12} sm={12} md={{ span: 8, offset: 4 }} className={styles.content}>
@@ -19,7 +18,7 @@ const HomeBanner = () => (
           </a>
         </Col>
         <Col xs={12} sm={5} md={5} className={styles.contentBtn}>
-          <a className={styles.link} alt="api reference" href="/">
+          <a className={styles.link} alt="api reference" href="api-reference">
             api reference.
           </a>
         </Col>
